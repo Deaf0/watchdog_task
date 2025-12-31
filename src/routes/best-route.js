@@ -8,7 +8,7 @@ async function routes (fastify, options) {
             }
         }
     }, async (request) => {
-            return { zone: request.query.zone, smth: request.query.smth_else }
+            return { zone: request.query.zone }
         }
     )
 }

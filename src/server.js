@@ -1,4 +1,4 @@
-import fastify from './app.js'
+import fastify from "./app.js"
 
 
 try {

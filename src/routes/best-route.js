@@ -1,4 +1,6 @@
-async function routes (fastify, options) {
+export default async function routes (fastify, options) {
+    const { serverStateService, rankingService } = options
+
     fastify.get('/best', {
         schema: {
             querystring: {
@@ -8,9 +10,12 @@ async function routes (fastify, options) {
             }
         }
     }, async (request) => {
-            return { zone: request.query.zone }
+            const { zone } = request.query
+
+            const alive = serverStateService.getAliveByZone(zone)
+            const ranked = rankingService.rank(alive)
+
+            return ranked.map(s => s.name)
         }
     )
 }
-
-export default routes;

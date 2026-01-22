@@ -2,6 +2,7 @@ import { connect, JSONCodec, consumerOpts } from "nats"
 
 const HEARTBEAT_TIMEOUT_MS = 70_000
 const HEALTHCHECK_INTERVAL_MS = 30_000
+const STREAM_NAME = "heartbeat-stream"
 
 export class ServerStateService{
     constructor(knownServers) {
@@ -54,9 +55,24 @@ export class ServerStateService{
 
     async connectNats() {
         this.nc = await connect({ 
-            servers: "nats://localhost:4222" 
+            servers: process.env.NATS_URL 
         })
+
+        const jsm = await this.nc.jetstreamManager()
+
         this.js = this.nc.jetstream()
+        
+        try {
+            await jsm.streams.info(STREAM_NAME)
+            console.log(`Stream "${STREAM_NAME}" already exists`)
+        } catch (error) {
+            if (error.code === '404' || error.message?.includes('not found')) {
+                console.log(`Stream "${STREAM_NAME}" not found, creating...`)
+                await this.createStream(jsm)
+            } else {
+                throw error
+            }
+        }
 
         const opts = consumerOpts()
         opts.durable("watchdog")
@@ -68,6 +84,24 @@ export class ServerStateService{
             "heartbeat.>",
             opts
         )
+    }
+
+    async createStream(jsm) {
+        try {
+            const streamConfig = {
+                name: STREAM_NAME,
+                subjects: ["heartbeat.>"],
+                retention: "limits",
+                storage: "file",
+                max_age: 120 * 1_000_000_000
+            }
+
+            await jsm.streams.add(streamConfig)
+            console.log(`Stream "${STREAM_NAME}" created successfully`)
+        } catch (error) {
+            console.error(`Failed to create stream "${STREAM_NAME}":`, error)
+            throw error
+        }
     }
 
     startConsumerLoop() {

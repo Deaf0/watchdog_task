@@ -3,4 +3,4 @@ producer/
 src/config
 .env
 *.log
-*.yml
+

@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: watchdog-postgres
+    environment:
+      POSTGRES_DB: watchdog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: nats
+    command: ["-js"]
+    ports:
+      - "4223:4222"
+    volumes:
+      - nats-data:/data
+
+  migrate:
+    build: .
+    container_name: watchdog-migrate
+    depends_on:           
+      postgres:
+        condition: service_healthy  
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: watchdog
+    command: npx mikro-orm schema:update --run
+
+  watchdog:
+    build: .
+    container_name: watchdog
+    depends_on:          
+      - postgres
+      - nats
+      - migrate          
+    environment:
+      NODE_ENV: production
+      NATS_URL: nats://nats:4222
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: watchdog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  nats-data:
+  pgdata:

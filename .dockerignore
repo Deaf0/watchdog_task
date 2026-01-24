@@ -1,0 +1,6 @@
+node_modules/
+producer/
+tests/
+.git
+.gitignore
+.env

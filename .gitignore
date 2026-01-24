@@ -1,6 +1,6 @@
 node_modules/
 producer/
-src/config/knownServers.js
+src/config
 .env
 *.log
 *.yml

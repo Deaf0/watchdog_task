@@ -5,8 +5,8 @@ const HEALTHCHECK_INTERVAL_MS = 30_000
 const STREAM_NAME = "heartbeat-stream"
 
 export class ServerStateService{
-    constructor(knownServers) {
-        this.knownServers= knownServers
+    constructor(serverRepository) {
+        this.serverRepository= serverRepository
         this.state = new Map()
         this.nc = null 
         this.js = null
@@ -17,7 +17,7 @@ export class ServerStateService{
     }
 
     async init() {
-        this.initState()
+        await this.initState()
         await this.connectNats()
         this.startConsumerLoop()
         this.startHealthCheck()
@@ -35,11 +35,13 @@ export class ServerStateService{
         this.state.clear()
     }
     
-    initState() {
-        for (const [name, data] of Object.entries(this.knownServers)) {
-            this.state.set(name, {
-                name,
-                zone: data.zone,
+    async initState() {
+        const servers = await this.serverRepository.getAll()
+
+        for (const server of servers) {
+            this.state.set(server.name, {
+                name: server.name,
+                zone: server.zone,
 
                 lastUtcSent: null,
                 lastReceivedAt: null,

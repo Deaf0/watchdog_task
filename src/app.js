@@ -2,13 +2,18 @@ import Fastify from "fastify"
 import routes from "./routes/best-route.js"
 import { RankingService } from "./services/rankingService.js"
 import { ServerStateService } from "./services/serverStateService.js"
-import { knownServers } from "./config/knownServers.js"
+import { MikroORM } from '@mikro-orm/postgresql'
+import { ServerRepository } from "./repositories/serverRepository.js"
 
 const fastify = Fastify({
   logger: true
 })
 
-const serverStateService = new ServerStateService(knownServers)
+const orm = await MikroORM.init() 
+
+const serverRepo = new ServerRepository(orm.em.fork())
+const serverStateService = new ServerStateService(serverRepo)
+const rankingService = new RankingService()
 
 fastify.addHook('onReady', async () => {
   await serverStateService.init()
@@ -16,9 +21,8 @@ fastify.addHook('onReady', async () => {
 
 fastify.addHook('onClose', async () => {
   await serverStateService.destroy()
+  await orm.close()
 })
-
-const rankingService = new RankingService()
 
 fastify.register(routes, {
   serverStateService,
